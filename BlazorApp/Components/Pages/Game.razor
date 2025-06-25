@@ -1,0 +1,238 @@
+@page "/game"
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@implements IDisposable
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Adventure Game</PageTitle>
+
+<h1>🎮 Adventure Game</h1>
+
+<div class="game-container">
+    <div class="game-info">
+        <p><strong>Player Position: (@playerX, @playerY)</strong></p>
+        <p>Use WASD or Arrow Keys to move | Click the game grid first!</p>
+        <p style="color: @(isGameFocused ? "green" : "red")">
+            Game Status: @(isGameFocused ? "Ready - Use WASD!" : "Click game to focus")
+        </p>
+    </div>
+    
+    <div class="game-grid" 
+         tabindex="0" 
+         @onkeydown="HandleKeyPress" 
+         @onkeydown:preventDefault="true"
+         @onclick="FocusGame"
+         @ref="gameGridElement">
+        @for (int row = 0; row < gridSize; row++)
+        {
+            <div class="grid-row">
+                @for (int col = 0; col < gridSize; col++)
+                {
+                    <div class="grid-cell @GetCellClass(col, row)">
+                        @GetCellContent(col, row)
+                    </div>
+                }
+            </div>
+        }
+    </div>
+    
+    <div class="game-controls">
+        <p><strong>Controls:</strong> WASD or Arrow Keys | <strong>Reset:</strong> R key or button</p>
+        <button @onclick="ResetGame" class="btn btn-primary">Reset Game</button>
+        <button @onclick="FocusGame" class="btn btn-secondary">Focus Game</button>
+    </div>
+</div>
+
+@code {
+    private const int gridSize = 5;
+    private int playerX = 0;
+    private int playerY = 0;
+    private ElementReference gameGridElement;
+    private bool isGameFocused = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await FocusGame();
+        }
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        Console.WriteLine($"Key pressed: {e.Key}"); // Debug output
+        
+        var newX = playerX;
+        var newY = playerY;
+        bool moved = false;
+
+        switch (e.Key.ToLower())
+        {
+            case "w":
+            case "arrowup":
+                newY = Math.Max(0, playerY - 1);
+                moved = true;
+                break;
+            case "s":
+            case "arrowdown":
+                newY = Math.Min(gridSize - 1, playerY + 1);
+                moved = true;
+                break;
+            case "a":
+            case "arrowleft":
+                newX = Math.Max(0, playerX - 1);
+                moved = true;
+                break;
+            case "d":
+            case "arrowright":
+                newX = Math.Min(gridSize - 1, playerX + 1);
+                moved = true;
+                break;
+            case "r":
+                ResetGame();
+                return;
+        }
+
+        if (moved && (newX != playerX || newY != playerY))
+        {
+            playerX = newX;
+            playerY = newY;
+            Console.WriteLine($"Player moved to: ({playerX}, {playerY})"); // Debug output
+            StateHasChanged();
+        }
+    }
+
+    private async Task FocusGame()
+    {
+        await gameGridElement.FocusAsync();
+        isGameFocused = true;
+        StateHasChanged();
+        Console.WriteLine("Game focused!"); // Debug output
+    }
+
+    private string GetCellClass(int x, int y)
+    {
+        if (x == playerX && y == playerY)
+            return "player-cell";
+        
+        return "empty-cell";
+    }
+
+    private string GetCellContent(int x, int y)
+    {
+        if (x == playerX && y == playerY)
+            return "🧙‍♂️"; // Player character
+        
+        return ""; // Empty cell
+    }
+
+    private void ResetGame()
+    {
+        playerX = 0;
+        playerY = 0;
+        StateHasChanged();
+        Console.WriteLine("Game reset!"); // Debug output
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}
+
+<style>
+    .game-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        padding: 20px;
+    }
+
+    .game-info {
+        text-align: center;
+        font-size: 16px;
+    }
+
+    .game-grid {
+        display: flex;
+        flex-direction: column;
+        border: 3px solid #333;
+        background-color: #f0f0f0;
+        outline: 2px solid #007bff;
+        cursor: pointer;
+        padding: 5px;
+    }
+
+    .game-grid:focus {
+        outline: 3px solid #007bff;
+        background-color: #e8f4fd;
+    }
+
+    .grid-row {
+        display: flex;
+    }
+
+    .grid-cell {
+        width: 60px;
+        height: 60px;
+        border: 1px solid #ccc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        background-color: #fff;
+        transition: background-color 0.2s;
+    }
+
+    .player-cell {
+        background-color: #4CAF50 !important;
+        animation: pulse 1s infinite;
+        border: 2px solid #2E7D32;
+    }
+
+    .empty-cell {
+        background-color: #fff;
+    }
+
+    .empty-cell:hover {
+        background-color: #f5f5f5;
+    }
+
+    @@keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+
+    .game-controls {
+        text-align: center;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 5px;
+    }
+
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #0056b3;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background-color: #545b62;
+    }
+</style> 
